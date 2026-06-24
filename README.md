@@ -1,6 +1,13 @@
 # ameba-OTA-UI
 
-This README provides instructions on how to set up and run the ameba-OTA-UI. Currently it works for Ubuntu 22.04, Arduino SDK.
+Web UI for managing Ameba OTA firmware updates. Supports both HTTP and HTTPS.
+
+- **HTTP** — default, no setup needed: run `npm start`
+- **HTTPS** — auto-detected when `server.key` + `server.crt` are present: run `npm run https`
+
+Currently tested on Ubuntu 22.04 with the Arduino SDK.
+
+---
 
 ## Environment Setup
 
@@ -24,29 +31,102 @@ This README provides instructions on how to set up and run the ameba-OTA-UI. Cur
    [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
    ```
 
-4. Install a specific Node.js version (e.g., v18.20.3) and a specific npm version (during time of development, node: 18.20.3, npm:10.8.1. This may work for other versions of node and npm) :
+4. Install Node.js (e.g., v18.20.3) and npm 10.8.1:
 
    ```sh
-   nvm install v18.20.3 
+   nvm install v18.20.3
    npm install npm@10.8.1 -g
    ```
 
-5. Check the installed Node.js and npm versions:
+5. Check the installed versions:
+
    ```sh
    node -v
    npm -v
    ```
 
-## Install Dependencies
-  ```sh
+6. Install dependencies:
+
+   ```sh
    cd ameba-OTA-UI/
-   npm i
+   npm install
    ```
 
-## Running the Project
-1. To create a production build and run the server:
+---
+
+## Running the Server
+
+### HTTP (quick start, no certificate needed)
+
+```sh
+npm run build
+npm start
+```
+
+The server starts on **http://localhost:3000**.
+
+### HTTPS (recommended for device OTA)
+
+#### Quick start (automated)
+
+```sh
+bash setup-https.sh
+```
+
+The script will:
+1. Prompt for your server IP and port
+2. Build the Next.js app
+3. Generate a self-signed SSL certificate
+4. Start the HTTPS server
+
+#### Manual setup
+
+1. Generate a self-signed certificate:
+
+   ```sh
+   openssl req -x509 -newkey rsa:2048 \
+       -keyout server.key -out server.crt \
+       -days 365 -nodes \
+       -subj "/CN=192.168.1.100"
+   ```
+
+   Replace `192.168.1.100` with your PC's IP address.
+
+2. Build and start the HTTPS server:
+
    ```sh
    npm run build
-   npm start
+   npm run https
    ```
 
+#### Verify
+
+```sh
+curl -k https://192.168.1.100:443/api/uploadfile -I
+```
+
+Expected response includes `HTTP/1.1 200 OK` with `Content-Length`.
+
+---
+
+## Usage
+
+1. Open the web UI: `https://<server-ip>:443/`
+2. Upload a firmware binary (`ota.bin`)
+3. Configure your Ameba device to download from:
+   ```
+   https://<server-ip>:443/api/uploadfile
+   ```
+4. The device downloads the firmware over HTTPS with `Content-Length` for reliable OTA.
+
+---
+
+## API Reference
+
+| Method | Endpoint              | Description                    |
+|--------|-----------------------|--------------------------------|
+| GET    | `/api/uploadfile`     | Download the uploaded firmware |
+| POST   | `/api/uploadfile`     | Upload firmware via UI         |
+| DELETE | `/api/uploadfile`     | Delete the uploaded firmware   |
+| GET    | `/api/connectedclients` | List recently connected clients |
+| POST   | `/api/connectedclients` | Register a connected client    |
