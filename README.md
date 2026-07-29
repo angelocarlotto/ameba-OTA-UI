@@ -51,7 +51,17 @@ Currently tested on Ubuntu 22.04 with the Arduino SDK.
    cd ameba-OTA-UI/
    npm install
    ```
+   
+7. WSL mirrored networking (optional):
 
+   Open or create your global configuration file at %UserProfile%\.wslconfig on Windows.
+   Add
+   ```sh
+   [wsl2]
+   networkingMode=mirrored
+   ```
+   Run wsl --shutdown in PowerShell to restart your instances.
+   
 ---
 
 ## Running the Server
