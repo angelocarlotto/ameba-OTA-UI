@@ -1,7 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 
 // Define the array to store the IP and timestamp pairs
-let ipStore: Array<{ ip: string; timestamp: number; OTA_state: string }> = [];
+let ipStore: Array<{
+  ip: string;
+  timestamp: number;
+  OTA_state: string;
+  buildId?: string;
+  boardModel?: string;
+  healthy?: boolean;
+}> = [];
 
 const POST = async (req: NextRequest) => {
   // Get the IP address
@@ -15,7 +22,7 @@ const POST = async (req: NextRequest) => {
   const requestData = await req.json();
   // console.log("Request data is:", requestData);
 
-  const { OTA_state } = requestData;
+  const { OTA_state, buildId, boardModel, healthy } = requestData;
 
   let formattedIp = ip;
   // Remove the ::ffff: prefix if present
@@ -33,7 +40,14 @@ const POST = async (req: NextRequest) => {
 
   // If the IP does not exist in the array, add it along with the current timestamp
   if (ipIndex === -1) {
-    ipStore.push({ ip: formattedIp, timestamp: currentTime, OTA_state });
+    ipStore.push({
+      ip: formattedIp,
+      timestamp: currentTime,
+      OTA_state,
+      buildId,
+      boardModel,
+      healthy,
+    });
     // console.log("IP and timestamp stored:", {
     //   ip: formattedIp,
     //   timestamp: currentTime,
@@ -42,6 +56,9 @@ const POST = async (req: NextRequest) => {
     // If the IP exists, update the timestamp
     ipStore[ipIndex].timestamp = currentTime;
     ipStore[ipIndex].OTA_state = OTA_state;
+    if (buildId) ipStore[ipIndex].buildId = buildId;
+    if (boardModel) ipStore[ipIndex].boardModel = boardModel;
+    if (typeof healthy === "boolean") ipStore[ipIndex].healthy = healthy;
     // console.log("Timestamp updated for IP:", {
     //   ip: formattedIp,
     //   timestamp: currentTime,
