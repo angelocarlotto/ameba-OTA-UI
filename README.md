@@ -112,10 +112,13 @@ The script will:
 #### Verify
 
 ```sh
-curl -k https://192.168.1.100:443/api/uploadfile -I
+curl -k https://192.168.1.100:443/api/firmwareinfo
+curl -kI https://192.168.1.100:443/api/uploadfile
 ```
 
-Expected response includes `HTTP/1.1 200 OK` with `Content-Length`.
+The manifest response describes the uploaded firmware, including its build ID,
+board model, size, and SHA-256 hash. The download response includes
+`Content-Length` for reliable OTA transfers.
 
 ---
 
@@ -123,20 +126,62 @@ Expected response includes `HTTP/1.1 200 OK` with `Content-Length`.
 
 1. Open the web UI: `https://<server-ip>:443/`
 2. Upload a firmware binary (`ota.bin`)
-3. Configure your Ameba device to download from:
+3. The server validates that the file is no larger than 4 MiB and contains an
+   `AMB82_BUILD_ID=<build-id>` marker.
+4. Configure your Ameba device to query:
+   ```
+   https://<server-ip>:443/api/firmwareinfo
+   ```
+5. After validating the manifest, the device downloads the firmware from:
    ```
    https://<server-ip>:443/api/uploadfile
    ```
-4. The device downloads the firmware over HTTPS with `Content-Length` for reliable OTA.
+6. The device reports its OTA state and successful boot through
+   `/api/connectedclients`.
 
 ---
 
 ## API Reference
 
-| Method | Endpoint              | Description                    |
-|--------|-----------------------|--------------------------------|
-| GET    | `/api/uploadfile`     | Download the uploaded firmware |
-| POST   | `/api/uploadfile`     | Upload firmware via UI         |
-| DELETE | `/api/uploadfile`     | Delete the uploaded firmware   |
-| GET    | `/api/connectedclients` | List recently connected clients |
-| POST   | `/api/connectedclients` | Register a connected client    |
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/firmwareinfo` | Return the uploaded firmware manifest |
+| GET | `/api/uploadfile` | Download the uploaded firmware with `Content-Length` |
+| POST | `/api/uploadfile` | Validate and upload an AMB82-MINI firmware file |
+| DELETE | `/api/uploadfile` | Delete the uploaded firmware |
+| GET | `/api/connectedclients` | List devices seen within the last 4.5 seconds |
+| POST | `/api/connectedclients` | Register device OTA state, build, model, and boot health |
+
+### Firmware manifest
+
+`GET /api/firmwareinfo` returns `available: false` when no firmware is stored.
+When an upload is available, the response has this shape:
+
+```json
+{
+  "available": true,
+  "boardModel": "AMB82-MINI",
+  "buildId": "AVSYNC-20260930-28",
+  "size": 3198980,
+  "sha256": "<64 lowercase hexadecimal characters>"
+}
+```
+
+Responses use `Cache-Control: no-store` so devices always validate against the
+current upload.
+
+### Device status
+
+Devices register with `POST /api/connectedclients` using JSON fields such as:
+
+```json
+{
+  "OTA_state": "IDLE",
+  "buildId": "AVSYNC-20260930-28",
+  "boardModel": "AMB82-MINI",
+  "healthy": true
+}
+```
+
+The status list is currently kept in server memory and is cleared when the
+server restarts.
